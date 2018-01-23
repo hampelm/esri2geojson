@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Convert ArcGIS JSON to GeoJSON</title>
+
+    <style media="screen">
+      html, body {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        font-family: 'Roboto Sans', Helvetica, sans-serif;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        color: #333;
+      }
+
+      textarea {
+        font-family: 'Roboto Mono', monospace;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        padding: 10px;
+      }
+
+      .column {
+        flex: 1;
+        flex-direction: column;
+        display: flex;
+        flex: 1;
+        padding: 10px;
+      }
+
+      textarea {
+        flex: 1;
+      }
+
+      .intro {
+        padding: 20px 20px 0 20px;
+      }
+
+      #error {
+        color: red;
+      }
+
+      #percent {
+        color: #999;
+      }
+    </style>
+    <script src="./arcgis-to-geojson-utils-browser.js" type="text/javascript"></script>
+    <script type="text/javascript">
+window.onload = function() {
+  var esri = document.getElementById('esrijson');
+  var geojson = document.getElementById('geojson');
+  var percent = document.getElementById('percent');
+  var save = document.getElementById('save');
+  var error = document.getElementById('error');
+
+  function handleEsri(data) {
+    error.innerHTML = '';
+    try {
+      var json = JSON.parse(esri.value);
+    } catch (err) {
+      error.innerHTML = err;
+      return;
+    }
+    console.log('Checking', json);
+    geojson.innerHTML = '{ "type": "FeatureCollection", "features": [\n';
+
+    if (json.features !== undefined) {
+      var count = json.features.length;
+      count.innerHTML = count;
+      percent.innerHTML = '0%';
+
+      for (var i = 0; i < count; i++) {
+        geojson.innerHTML += JSON.stringify(
+          ESRI.arcgisToGeoJSON(json.features[i]),
+        );
+        if (i + 1 < count) {
+          geojson.innerHTML += ',';
+        }
+        geojson.innerHTML += '\n';
+        percent.innerHTML = ((i + 1) / count * 100).toFixed(2) + '%';
+      }
+    } else {
+      geojson.innerHTML += JSON.stringify(ESRI.arcgisToGeoJSON(json));
+    }
+
+    geojson.innerHTML += ']}';
+  }
+
+  function handleGeojson(data) {
+    esri.innerHTML = JSON.stringify(
+      ESRI.geojsonToArcGIS(JSON.parse(geojson.value)),
+    );
+  }
+
+  function download(data, filename, type) {
+    var file = new Blob([data], { type: type });
+    if (window.navigator.msSaveOrOpenBlob)
+      // IE10+
+      window.navigator.msSaveOrOpenBlob(file, filename);
+    else {
+      // Others
+      var a = document.createElement('a'),
+        url = URL.createObjectURL(file);
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    }
+  }
+
+  esri.addEventListener('onkeyup', handleEsri);
+  esri.addEventListener('onchange', handleEsri);
+  esri.addEventListener('input', handleEsri);
+  geojson.addEventListener('onkeyup', handleGeojson);
+  geojson.addEventListener('onchange', handleGeojson);
+  geojson.addEventListener('input', handleGeojson);
+  save.addEventListener('click', function() {
+    download(geojson.innerHTML, 'export.geojson', 'geojson');
+  });
+};
+</script>
+  </head>
+  <body>
+    <div class="intro">
+      <p>Convert JSON from an ArcGIS endpoint to a GeoJSON feature collection</p>
+
+      <span id="error"></span>
+      <a href="#" id="save">Save</a>
+    </div>
+    <div class="container">
+      <div class="column">
+        <h1>Esri JSON</h1>
+        <textarea id="esrijson"></textarea>
+      </div>
+      <div class="column">
+        <h1>GeoJSON <span id="percent"></span></h1>
+        <textarea id="geojson"></textarea>
+      </div>
+  </body>
+</html>
